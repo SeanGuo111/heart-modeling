@@ -9,6 +9,10 @@ def reactions_aliev_panfilov(u: np.ndarray, v: np.ndarray):
     G = epsilon(u,v) * (-v - (k * u * (u - a - 1)))
     return F, G
 
+def active_stress(u: np.ndarray, T_a: np.ndarray):
+    epsilon_u = np.where(u < 0.05, 10, 1)
+    return epsilon_u * ((k_T * u) - T_a)
+
 def determine_diffusion_indices(x,y):
     """Given the x and y indices for a point on the grid, it returns the proper indices
     so as to allow for Neumann boundary conditions. Specifically, any index outside of
