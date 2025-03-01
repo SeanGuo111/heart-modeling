@@ -164,3 +164,5 @@ for i in range(len(u_sequences)):
 
 # Go back at look at stimulation of a single cell (1D) -> 2D
 # Try action potential model for single cell
+
+# video of each ohio data frame
