@@ -1,6 +1,6 @@
 # simulation parameters:
 dx, dy, dt = 1, 1, 0.05 #NOTE: dx and dy must be 1 for success. Why?
-x_grid_size, y_grid_size = 83, 83 #81 resolution to allow for exact midpoint. +2 to account for neumann conditions on both sides
+x_grid_size, y_grid_size = 123, 123 #81 resolution to allow for exact midpoint. +2 to account for neumann conditions on both sides
 default_timesteps = 3000
 
 # equation parameters:

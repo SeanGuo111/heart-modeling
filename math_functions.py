@@ -1,14 +1,18 @@
 from parameters import *
 import numpy as np
+from numba import njit
 
+@njit()
 def epsilon(u: np.ndarray, v: np.ndarray):
     return epsilon_0 + ((mu_1*v) / (mu_2 + u))
 
+@njit()
 def reactions_aliev_panfilov(u: np.ndarray, v: np.ndarray):
     F = -(k * u * (u - a) * (u - 1)) - (u * v)
     G = epsilon(u,v) * (-v - (k * u * (u - a - 1)))
     return F, G
 
+@njit()
 def active_stress(u: np.ndarray, T_a: np.ndarray):
     epsilon_u = np.where(u < 0.05, 10, 1)
     return epsilon_u * ((k_T * u) - T_a)
@@ -30,6 +34,7 @@ def determine_diffusion_indices(x,y):
         y_new = y_grid_size - 1
     return x_new, y_new
 
+@njit()
 def enforce_boundary_conditions(u: np.ndarray):
     for x_index in range(1, x_grid_size-1):
         u[x_index,0] = u[x_index,1]
@@ -45,6 +50,7 @@ def enforce_boundary_conditions(u: np.ndarray):
 
     return u
 
+@njit()
 def laplacian_standard (u: np.ndarray):
     laplacian = np.zeros_like(u)
 
@@ -64,6 +70,7 @@ def laplacian_standard (u: np.ndarray):
 
     return laplacian
 
+@njit()
 def laplacian_barkley(u: np.ndarray):
     laplacian = np.zeros_like(u)
 
@@ -84,6 +91,7 @@ def laplacian_barkley(u: np.ndarray):
 
     return laplacian / (dx ** 2)
 
+@njit()
 def laplacian_8_ways(u: np.ndarray):
     laplacian = np.zeros_like(u)
     # boundary conditions already taken care of
