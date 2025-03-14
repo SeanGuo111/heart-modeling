@@ -1,7 +1,7 @@
 /Heart Modeling.code-workspace
-/u_8000t.npy
-/u_innerspiral_4000t.npy
-/u_spiral_8000t.npy
-/v_8000t.npy
-/v_spiral_8000t.npy
-/v_innerspiral_4000t.npy
+/toy_python_model/u_8000t.npy
+/toy_python_model/u_innerspiral_4000t.npy
+/toy_python_model/u_spiral_8000t.npy
+/toy_python_model/v_8000t.npy
+/toy_python_model/v_spiral_8000t.npy
+/toy_python_model/v_innerspiral_4000t.npy
