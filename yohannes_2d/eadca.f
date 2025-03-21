@@ -1,5 +1,7 @@
+! Commands:
+! 1. gfortran ca-currents.f v-currents.f eadca.f -o eadca
+! 2. .\eadca.exe
 
-c     ifx eadca.f ca-currents.f v-currents.f
 
       implicit double precision (a-h,o-z)
       parameter (Lx=100,Ly=100)
@@ -41,19 +43,20 @@ c     ifx eadca.f ca-currents.f v-currents.f
 
 
    
-c********************************************************************
+c***********************************DATA LOADING: reedit when done*********************************
      
-        open(unit=1, file='./data100/voltage.txt', status='replace')
-        open(unit=2, file='./data100/cb.txt', status='replace')
-        open(unit=3, file='./data100/csrb.txt', status='replace')
-        open(unit=4, file='./data100/ci.txt', status='replace')
+        ! open(unit=1, file='./data100/voltage.txt', status='replace')
+        ! open(unit=2, file='./data100/cb.txt', status='replace')
+        ! open(unit=3, file='./data100/csrb.txt', status='replace')
+        ! open(unit=4, file='./data100/ci.txt', status='replace')
        
                 
 c ******************************************************************	
 
 	iseed=823323  ! initial random number seed
 
-	rbcl=1000.0d0  ! pacing rate
+	rbcl=100.0d0  ! pacing rate
+        ! originally 1000.0d0
 
 	Dfu=0.0001    ! effective voltage diffusion coefficient used 
 
@@ -167,16 +170,16 @@ c*************** integration loop ************************************
 
 	t=0.0 ! this is the total time elapsed
 
-        !print *, "Starting simulation with", nstim, "beats"
+        ! print *, "Starting simulation with", nstim, "beats"
 
         do iz=1,nstim  ! number of beats 
-        !print *, "Starting beat", iz
+        ! print *, "Starting beat", iz
         nstep=int(rbcl/dt)
-        !print *, "  Will run", nstep, "steps for this beat"
+        ! print *, "  Will run", nstep, "steps for this beat"
 
         do ncount = 0, nstep
         if(mod(ncount,100).eq.0) then
-        !print *, "  Beat", iz, "Step", ncount, "of", nstep, "t=", t
+        ! print *, "  Beat", iz, "Step", ncount, "of", nstep, "t=", t
         endif
 
         ! Existing code...
@@ -190,6 +193,7 @@ c*************** integration loop ************************************
 	sapd2=0.0d0
 
 	do iz=1,nstim  ! number of beats 
+        print *, "Beat ", iz
 
 	nstep=int(rbcl/dt)
 
@@ -201,6 +205,8 @@ c*************** integration loop ************************************
 
 
 	 time = dfloat(ncount)*dt ! time during each beat
+         print *, "ncount ", ncount, " out of  ", nstep
+
        
           do  iy =1, Ly
             do  ix=1,Lx
