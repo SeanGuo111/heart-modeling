@@ -2,9 +2,8 @@
 c     ifx eadca.f ca-currents.f v-currents.f
 
       implicit double precision (a-h,o-z)
-      parameter (Lx=3,Ly=3)
-
-      parameter(nstim=50)  ! number of beats
+      parameter (Lx=100,Ly=100)
+      parameter(nstim=5)  ! number of beats
     
       double precision v(0:Lx+1,0:Ly+1), vnew(0:Lx+1,0:Ly+1)
       double precision dv(0:Lx,0:Ly),vold(0:Lx,0:Ly)
@@ -32,24 +31,31 @@ c     ifx eadca.f ca-currents.f v-currents.f
       double precision uxx(0:Lx,0:Ly),xuu(0:Lx,0:Ly)
 
  
-      double precision gicaz(0:Lx,0:Ly),gnacaz(0:Lx,0:Ly)
+      double precision gicaz(0:Lx,0:Ly),gnacaz(0:Lx,0:Ly)        
       double precision pbxz(0:Lx,0:Ly)
+
+            print *, "Starting with parameters:"
+      print *, "Lx=", Lx
+      print *, "Ly=", Ly
+      print *, "nstim=", nstim
+
 
    
 c********************************************************************
      
-	open(unit=1,file='v1.dat',status='unknown')
-	open(unit=2,file='cb1.dat',status='unknown')
-	open(unit=3,file='cj1.dat',status='unknown')
-	open(unit=4,file='ci1.dat',status='unknown')
-	
+        open(unit=1, file='./data100/voltage.txt', status='replace')
+        open(unit=2, file='./data100/cb.txt', status='replace')
+        open(unit=3, file='./data100/csrb.txt', status='replace')
+        open(unit=4, file='./data100/ci.txt', status='replace')
+       
+                
 c ******************************************************************	
 
 	iseed=823323  ! initial random number seed
 
-	rbcl=600.0d0  ! pacing rate
+	rbcl=1000.0d0  ! pacing rate
 
-	Dfu=0.00    ! effective voltage diffusion coefficient used 
+	Dfu=0.0001    ! effective voltage diffusion coefficient used 
 
 	gicai=2.20    ! strength of LCC
 	gtos=0.04d0   ! strength of ito slow
@@ -73,12 +79,12 @@ c	xnai=xmx*rbcl+16.0 ! sodium concentraton.  pacing rate dependent due to Na acc
 
 c ******** constant paramters ****************************************
 
- 	  xnao=136.0d0!;mM   ! external Na
+ 	   xnao=136.0d0!;mM   ! external Na
           xki=140.0d0!; mM   ! internal K
           xko=5.40d0 !;mM    ! external K
           cao=1.8d0 !;mM     ! external Ca
 	
- 	  temp=308.0d0       ! temperature (K)
+ 	   temp=308.0d0       ! temperature (K)
           xxr=8.314d0        
           xf=96.485d0        ! Faraday's constant
           frt=xf/(xxr*temp)     
@@ -92,8 +98,9 @@ c **********************************************************************
 
       dx = 0.015d0
       dy = 0.015d0
+      duration = rbcl
 
-      nstep = duration/dt
+      nstep = duration/dt !changed to see if that 
       slmbdax = Dfu*dt/4.0d0/dx/dx
       slmbday = Dfu*dt/4.0d0/dy/dy
 
@@ -150,6 +157,7 @@ c ***************************************************************************
 
         enddo
       enddo
+      print *, "Finalized Initial Conditions..."
 
 
 	
@@ -158,6 +166,25 @@ c*************** integration loop ************************************
 	kku=1
 
 	t=0.0 ! this is the total time elapsed
+
+        !print *, "Starting simulation with", nstim, "beats"
+
+        do iz=1,nstim  ! number of beats 
+        !print *, "Starting beat", iz
+        nstep=int(rbcl/dt)
+        !print *, "  Will run", nstep, "steps for this beat"
+
+        do ncount = 0, nstep
+        if(mod(ncount,100).eq.0) then
+        !print *, "  Beat", iz, "Step", ncount, "of", nstep, "t=", t
+        endif
+
+        ! Existing code...
+        
+        t=t+dt
+        enddo ! time step
+        !print *, "Completed beat", iz, "at time", t
+        enddo ! go to the next beat
 	
 	sapd=0.0d0
 	sapd2=0.0d0
@@ -335,13 +362,24 @@ c************ these are the voltage dependent currents ***********************
 
 	xitor(ix,iy)=xito
 
-c************************************************************************
+c**********UNIFORM STIMULATION *************************************
           
-	if(time.lt.1.0) then
-	stim=80.0d0
-	else
-	stim=0.0
-	endif       
+	!if(time.lt.1.0) then
+	!stim=80.0d0
+	!else
+	!stim=0.0
+	!endif       
+c       EDGE STIMULATION 
+
+        if(time.lt.1.0) then 
+          if(ix.lt.10 .and. iy.lt.10) then ! stim corrner
+             stim = 80.0d0
+          else
+             stim = 0.0
+          endif
+          else
+             stim = 0.0
+          endif
 
 c*************************************************************************
 	
@@ -361,12 +399,32 @@ c*************************************************************************
         call Euler_Forward(Lx,Ly,v,vnew,slmbdax,slmbday)
 
 
-	if(mod(ncount,1).eq.0) then
+        !if(mod(ncount,1000).eq.0) then
+        !print *, "Writing to files: t=", t, "v=", v(1,1), "cb=", cb(1,1)
+        !endif
 
-	write(1,*) t, v(1,1)
-	write(2,*) t, cb(1,1)
-	write(3,*) t, csrb(1,1)
-	write(4,*) t, ci(1,1)
+
+	if(mod(ncount,100).eq.0) then
+
+        ! Write data for this time step
+        do ix = 1, Lx
+        do iy = 1, Ly
+        write(1, '(F12.6, 2I5, E15.6)') t, ix, iy, v(ix,iy)
+        write(2, '(F12.6, 2I5, E15.6)') t, ix, iy, cb(ix,iy)
+        write(3, '(F12.6, 2I5, E15.6)') t, ix, iy, csrb(ix,iy)
+        write(4, '(F12.6, 2I5, E15.6)') t, ix, iy, ci(ix,iy)
+        end do
+        end do
+        
+        ! Optional: add a blank line between time steps for readability
+
+
+        call flush(1)
+        call flush(2)
+        call flush(3)
+        call flush(4)
+
+
 
 	endif
 	 
@@ -378,7 +436,10 @@ c*************************************************************************
 
 	enddo ! go to the next beat
 
-	
+      close(1)
+      close(2)
+      close(3)
+      close(4)
  500  stop
 
       end
