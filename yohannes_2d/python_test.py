@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ca_cardiac_model
 
+# python -m numpy.f2py -c cardiac_m.f90 -m ca_cardiac_model
+
 def run_cardiac_simulation():
     # Set parameters from the provided defaults
     lx = 10  # Assuming a small grid size, adjust as needed
