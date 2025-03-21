@@ -1,1 +1,0 @@
-f2py -c -m ca_cardiac_model cardiac_m.f90 ca-currents.f v-currents.f --f90flags="-O3 -march=native -funroll-loops -fopenmp" --opt="-O3" -lgomp
