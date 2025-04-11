@@ -2,7 +2,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ca_cardiac_model
 
-# python -m numpy.f2py -c cardiac_m.f90 -m ca_cardiac_model
+# python -m numpy.f2py -c -m ca_cardiac_model cardiac_m.f90 ca-currents.f v-currents.f
+
+def localized_random_stimulus(ix, iy, time, radius=5, stim_duration=1.0, time_prob=0.01):
+    global last_time_checked, stimulus_centers, stimulus_active, stimulus_start_time
+    
+    # Check if we're at a new time point
+    if abs(time - last_time_checked) > 1e-6:  # Floating point comparison
+        last_time_checked = time
+        
+        # If stimulus is active, check if it should end
+        if stimulus_active and (time - stimulus_start_time > stim_duration):
+            stimulus_active = False
+        
+        # Randomly decide to start a new stimulus
+        if not stimulus_active and random.random() < time_prob:
+            stimulus_active = True
+            stimulus_start_time = time
+            # Choose a random center point
+            center_x = random.randint(1, lx)
+            center_y = random.randint(1, ly)
+            stimulus_centers = [(center_x, center_y)]
+    
+    # Check if current point is within the stimulus radius of any center
+    
+    if stimulus_active:
+        #print(stimulus_active)
+        for center_x, center_y in stimulus_centers:
+            distance = ((ix - center_x)**2 + (iy - center_y)**2)**0.5
+            if distance <= radius:
+                return 80.0  # Return stimulus current
+    
+    return 0.0  # No stimulus
 
 def run_cardiac_simulation():
     # Set parameters from the provided defaults
@@ -42,12 +73,14 @@ def run_cardiac_simulation():
     
     # Define buffer size for time steps - control from Python
     max_buffer_size = 20000  # Adjust based on your expected simulation length
+    parallel = False # RK4
+    mod_output = 10 
     
     # Run the simulation with Python-controlled buffer size
-    v_out, cb_out, csrb_out, ci_out, t_out, num_steps = cardiac_model.cardiac_simulation(
+    v_out, cb_out, csrb_out, ci_out, t_out, num_steps = ca_cardiac_model.cardiac_simulation(
         lx, ly, nstim, iseed, rbcl, dfu, gicai, gtos, gtof, gnacai, zxr, nbt, 
         cxinit, xnai, xnao, xki, xko, cao, temp, xxr, xf, dt,
-        max_buffer_size
+        max_buffer_size,mod_output,parallel,localized_random_stimulus
     )
     
     print(f"Simulation completed with {num_steps} steps (buffer size: {max_buffer_size})")
