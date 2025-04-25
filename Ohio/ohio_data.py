@@ -1,21 +1,30 @@
 import sys
+import io
+import time
+import dask.dataframe
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animator
+from numba import jit
+from boxsdk import DevelopmentClient
 from tqdm import tqdm
 
+def load_individual_dataset(data_id: int, npy_or_csv: str = "npy", save_file: bool = False):
+    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\first_data_batch\\"
+    data_path = path_start + f"data_{data_id}"
 
+    length = 1024*1024
+    data = None
 
-def load_data(data_num: int, npy_or_csv: str = "npy", save_file: bool = False):
-    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\first_data_batch"
-    data_path = path_start + f"data_{data_num}"
-
-    data = 0
     if npy_or_csv == "npy":
         data = np.load(data_path + ".npy")
+        
     elif npy_or_csv == "csv":
-        data = np.genfromtxt(data_path + ".csv", delimiter=",")
+        data = np.loadtxt(data_path + ".csv", delimiter=",", usecols=range(length)) 
+        #usecols=range(length) ensures np ignores last element of each row, which it was interpreting as nan in genfromtxt
+        #loadtxt wayyyy faster than genfromtxt (0.5s vs. ~6-7s)
+        data = data.reshape((5,1024,1024))
         if save_file: np.save(data_path, data)
     else:
         print("Specify txt or csv to load")
@@ -23,14 +32,90 @@ def load_data(data_num: int, npy_or_csv: str = "npy", save_file: bool = False):
 
     return data
 
+def download_npys_from_box(start_data_id, end_data_id, channels=[0,1,2,3,4], save_file: bool = False):
+    """
+    Saves box csvs with given ids and specified channels as .npy files, each with shape (channels, dim, dim)
+    Save_file false by default as a safety
+    """
+
+    # Developer token: V2wREhqwIsFEueXWhqI4CTkcfvyWZ49X
+    client = DevelopmentClient()
+    # me = client.user(user_id='me').get()
+    # print(f"User: {me.name}, Email: {me.login}")
+    root_folder = client.folder(folder_id='292696197350')  # '0' is the ID for the root folder
+    all_files = root_folder.get_items()
+    
+    id_list = list(range(start_data_id, end_data_id+1))
+    file_name_list = [f"data_{id}.csv" for id in id_list]
+
+    dim = 1024
+    channel_count = len(channels)
+    channel_str = "".join(map(str, channels))
+    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\"
+    counter = 1
+
+    for file_box in all_files:
+        file_name = file_box.name
+        if file_name in file_name_list:
+            print(f"\nFile {counter}: {file_name}")
+            file_bytes = file_box.content()
+            #print(f"File type 1: {type(file_bytes)}")
+            
+            file = io.BytesIO(file_bytes).readlines()
+            #print(f"File type 2: {type(file)}")
+
+            data = np.loadtxt(file, delimiter=",", usecols=range(dim*dim))
+            channeled = data[channels][:] 
+            reshaped = channeled.reshape((channel_count,dim,dim))
+            file_save_name = path_start + f"npydata_c{channel_str}_{file_name[5:-4]}.npy"
+            if save_file: np.save(file_save_name, reshaped)
+
+            counter += 1
+
+
+def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], subset_channels=None, save_subsets=False):
+    """Returns single ndarray with shape (channels, time, dim, dim), from filenames with certain channels and an optional
+    subset of those filename channels that are actually selected to be in the loaded dataset. 
+    Subset defaults to being equal to filename_channels"""
+
+    if subset_channels is None or subset_channels == []:
+        subset_channels = filename_channels
+    elif len(subset_channels) > len(filename_channels):
+        print("Subset channels should be a subset of the filename channels")
+        return
+
+    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\"
+    channel_str = "".join(map(str, filename_channels))
+    subset_str = "".join(map(str, subset_channels))
+    
+    dim=1024
+    channel_count = len(subset_channels)
+    time_axis_len = end_data_id - start_data_id + 1
+    dataset = np.zeros((time_axis_len, channel_count, dim, dim))
+    
+    index = 0
+    for id in tqdm(range(start_data_id, end_data_id+1)):  
+        data_path = path_start + f"npydata_c{channel_str}_{id}.npy"    
+        raw = np.load(data_path)
+        channeled = raw[subset_channels][:] 
+        dataset[index] = channeled
+
+        if save_subsets:
+            file_save_name = path_start + f"npydata_c{subset_str}_{id}.npy"
+            np.save(file_save_name, channeled)
+
+        index += 1
+        
+    dataset = np.swapaxes(dataset, 0, 1)
+    return dataset
+
 def on_press(event):
-    global current_channel
-    current_channel += 1
-    plt.imshow(data_100[current_channel])
+    global current_time
+    current_time += 1
+    plt.imshow(dataset_100s_0[current_time])
+    plt.title(f"T = {current_time}")
 
     plt.draw()
-    print(plt.xlim())
-    print(plt.ylim())
 
     sys.stdout.flush()
 
@@ -46,22 +131,31 @@ def show_data(data, start_time, end_time):
     plt.suptitle(f"t = {start_time} to {end_time}")
     plt.show()
 
-save_file = True
 
-data_100 = load_data(100, "npy")
-print(f"Maxs, mins: {np.max(data_100, axis=0)}, {np.min(data_100, axis=0)}")
-data_100 = data_100[:,:-1]
-data_100 = data_100.reshape((5,1024,1024))
-current_channel = 0
+#%% real code
+start_id = 100
+end_id = 150
+filename_channels = [0,1,2,3,4]
+subset_channels = []
+save_subsets = False
 
+#download_npys_from_box(start_id,end_id,save_file=True)
+dataset_100s: np.ndarray = load_from_npy(start_id, end_id, filename_channels, subset_channels, save_subsets)
+#dataset_100s = load_individual_dataset(101, "csv", False)
+
+print(dataset_100s.shape)
+dataset_100s_0 = dataset_100s[2]
+print(dataset_100s_0.shape)
+
+
+current_time = 0
 fig, ax = plt.subplots()
 fig.canvas.mpl_connect('key_press_event', on_press)
 
-
-# plt.xlim(0, data_100.shape[2]-1)
-# plt.ylim(0, data_100.shape[2]-1)
-plt.imshow(data_100[0], extent=(0, 1023, 0, 1023))
+plt.imshow(dataset_100s_0[0], extent=(0, 1023, 0, 1023))
+plt.title("T = 0")
 plt.show()
 
 
 
+# %%
