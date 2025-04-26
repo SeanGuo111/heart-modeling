@@ -1,11 +1,11 @@
 import sys
 import io
-import time
-import dask.dataframe
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animator
+import optimap as om
+import monochrome as mc
 from numba import jit
 from boxsdk import DevelopmentClient
 from tqdm import tqdm
@@ -76,7 +76,8 @@ def download_npys_from_box(start_data_id, end_data_id, channels=[0,1,2,3,4], sav
 def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], subset_channels=None, save_subsets=False):
     """Returns single ndarray with shape (channels, time, dim, dim), from filenames with certain channels and an optional
     subset of those filename channels that are actually selected to be in the loaded dataset. 
-    Subset defaults to being equal to filename_channels"""
+    Subset defaults to being equal to filename_channels.
+    Dimensions (dim1, dim2) are 1. rows, top->bottom and then 2. columns, left->right, like matrix indexing. (Not (x,y).)"""
 
     if subset_channels is None or subset_channels == []:
         subset_channels = filename_channels
@@ -112,49 +113,94 @@ def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], sub
 def on_press(event):
     global current_time
     current_time += 1
-    plt.imshow(dataset_100s_0[current_time])
+    plt.imshow(dataset_100_c0[current_time])
     plt.title(f"T = {current_time}")
 
     plt.draw()
 
     sys.stdout.flush()
 
+def slideshow(channel_dataset):
+    global current_time
+    current_time = 0
+    fig, ax = plt.subplots()
+    fig.canvas.mpl_connect('key_press_event', on_press)
 
-def show_data(data, start_time, end_time):
-    print(data.shape)
-    fig, axes = plt.subplots(2, 3)
-    for i in range(axes.size-1):
-        x_i, y_i = i // 3, i % 3
-        plt.sca(axes[x_i, y_i])
-        plt.plot(data[i,start_time:end_time])
-    
-    plt.suptitle(f"t = {start_time} to {end_time}")
+    plt.imshow(channel_dataset[0], extent=(0, 1023, 0, 1023))
+    plt.title("T = 0")
     plt.show()
 
+def animation(channel_dataset, time_skip = 1, interval = 10, save=False): #Animation of just u
+    """NOTE: this function was modified from code mentor @ UCSB wrote. (all other functions were written originally)"""
+
+    fig, ax_1 = plt.subplots(1, 1, figsize=(5, 5))
+    img = ax_1.imshow(channel_dataset[0], cmap="Blues", interpolation="none")
+    #img_v = ax_2.imshow(v_sequence[0], cmap="Greys", interpolation="none", vmin=0, vmax=1)
+
+    def lilly(t):
+        current_time = t * time_skip
+        img.set_data((channel_dataset[current_time]))
+        #img_v.set_data((v_sequence[current_time]))
+        plt.title(f"Time = {current_time}")
+
+        img.autoscale()
+        #img_v.autoscale()
+        return img#, img_v
+
+    anim = animator.FuncAnimation(
+        fig, lilly, range(len(channel_dataset) // time_skip), interval=interval #display duration for each frame in milliseconds
+    )
+    plt.show()
+
+def chunk(dataset, lower_dim, flatten=False):
+    """Takes a single channel dataset with shape (time, dim, dim), with dim = 1024, 
+    and returns smaller-dimensional samples from the center 1000 grid cells as an ndarray with one of two shapes:
+        flatten = False: (row, column, time, lower_dim, lower_dim). Recall that f
+        flatten = True: (total_samples, time, lower_dim, lower_dim) 
+    Lower dim should be a factor of 1000."""
+
+    cropped = dataset[:,12:1012,12:1012]
+    num_subarrays = int(1000 / lower_dim)
+
+    col_split = np.array(np.split(cropped, num_subarrays, 2))
+    col_row_split = np.array(np.split(col_split, num_subarrays, 2))
+    if not flatten: 
+        return col_row_split
+    time_axis = col_row_split.shape[2]
+    return np.reshape(col_row_split, (num_subarrays ** 2, time_axis, lower_dim, lower_dim))
 
 #%% real code
+path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\media\\"
 start_id = 100
-end_id = 150
+end_id = 199
 filename_channels = [0,1,2,3,4]
 subset_channels = []
 save_subsets = False
 
 #download_npys_from_box(start_id,end_id,save_file=True)
 dataset_100s: np.ndarray = load_from_npy(start_id, end_id, filename_channels, subset_channels, save_subsets)
-#dataset_100s = load_individual_dataset(101, "csv", False)
+#print(dataset_100s.shape)
 
-print(dataset_100s.shape)
-dataset_100s_0 = dataset_100s[2]
-print(dataset_100s_0.shape)
+dataset_100_c0 = dataset_100s[0]
+# dataset_100_c1 = dataset_100s[1]
+# dataset_100_c2 = dataset_100s[2]
+# min, max = np.min(dataset_100_c2), np.max(dataset_100_c2)
+# dataset_100_c3 = dataset_100s[3]
+# dataset_100_c4 = dataset_100s[4]
 
+print(f"Channel 0 shape: {dataset_100_c0.shape}")
+chunked_dataset = chunk(dataset_100_c0, 500, flatten=False)
+chunked_dataset_flattened = chunk(dataset_100_c0, 500, flatten=True)
+print(chunked_dataset.shape)
 
-current_time = 0
-fig, ax = plt.subplots()
-fig.canvas.mpl_connect('key_press_event', on_press)
+collage_video = om.video.collage([ndarray for ndarray in chunked_dataset_flattened], ncols=2, padding=20, padding_value=0)
+om.video.show_video(collage_video, cmap="Grays", interval=20)
+om.video.export_video(path_start + "dataset_c0_100-199_collage_2.mp4", collage_video)
 
-plt.imshow(dataset_100s_0[0], extent=(0, 1023, 0, 1023))
-plt.title("T = 0")
-plt.show()
+random_coords = [(int(rand_coord[0]), int(rand_coord[1])) for rand_coord in np.random.randint(0, 2, size=(3,2))]
+random_videos = [chunked_dataset[rand_coord] for rand_coord in random_coords]
+#om.video.show_videos(random_videos, titles=random_coords, cmaps="Grays", interval=20)
+
 
 
 
