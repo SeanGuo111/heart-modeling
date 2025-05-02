@@ -9,6 +9,7 @@ import monochrome as mc
 from numba import jit
 from boxsdk import DevelopmentClient
 from tqdm import tqdm
+# import cv2; installing opencv may cause matplotlib issues with qt; remove opencv to fix this
 
 def load_individual_dataset(data_id: int, npy_or_csv: str = "npy", save_file: bool = False):
     path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\first_data_batch\\"
@@ -169,6 +170,7 @@ def chunk(dataset, lower_dim, flatten=False):
     time_axis = col_row_split.shape[2]
     return np.reshape(col_row_split, (num_subarrays ** 2, time_axis, lower_dim, lower_dim))
 
+
 #%% real code
 path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\media\\"
 start_id = 100
@@ -177,16 +179,13 @@ filename_channels = [0,1,2,3,4]
 subset_channels = []
 save_subsets = False
 
+
+
 #download_npys_from_box(start_id,end_id,save_file=True)
 dataset_100s: np.ndarray = load_from_npy(start_id, end_id, filename_channels, subset_channels, save_subsets)
 #print(dataset_100s.shape)
 
 dataset_100_c0 = dataset_100s[0]
-# dataset_100_c1 = dataset_100s[1]
-# dataset_100_c2 = dataset_100s[2]
-# min, max = np.min(dataset_100_c2), np.max(dataset_100_c2)
-# dataset_100_c3 = dataset_100s[3]
-# dataset_100_c4 = dataset_100s[4]
 
 print(f"Channel 0 shape: {dataset_100_c0.shape}")
 chunked_dataset = chunk(dataset_100_c0, 500, flatten=False)
@@ -199,9 +198,16 @@ om.video.export_video(path_start + "dataset_c0_100-199_collage_2.mp4", collage_v
 
 random_coords = [(int(rand_coord[0]), int(rand_coord[1])) for rand_coord in np.random.randint(0, 2, size=(3,2))]
 random_videos = [chunked_dataset[rand_coord] for rand_coord in random_coords]
-#om.video.show_videos(random_videos, titles=random_coords, cmaps="Grays", interval=20)
+om.video.show_videos(random_videos, titles=random_coords, cmaps="Grays", interval=20)
 
-
+# test = chunked_dataset[0,0,0]
+# test_2 = np.zeros((200,200))
+# print(test.shape)
+# #cv2.Mat()
+# # test2 = cv2.resize(test, (200,200))
+# print(test_2.shape)
+# plt.imshow(test_2)
+# plt.show()
 
 
 # %%
