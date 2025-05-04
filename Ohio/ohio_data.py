@@ -114,7 +114,7 @@ def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], sub
 def on_press(event):
     global current_time
     current_time += 1
-    plt.imshow(dataset_100_c0[current_time])
+    plt.imshow(dataset_c0[current_time])
     plt.title(f"T = {current_time}")
 
     plt.draw()
@@ -153,15 +153,17 @@ def animation(channel_dataset, time_skip = 1, interval = 10, save=False): #Anima
     )
     plt.show()
 
-def chunk(dataset, lower_dim, flatten=False):
+def chunk(dataset, lower_dim, flatten=True):
     """Takes a single channel dataset with shape (time, dim, dim), with dim = 1024, 
-    and returns smaller-dimensional samples from the center 1000 grid cells as an ndarray with one of two shapes:
-        flatten = False: (row, column, time, lower_dim, lower_dim). Recall that f
-        flatten = True: (total_samples, time, lower_dim, lower_dim) 
+    and returns smaller-dimensional samples from the center grid cells as an ndarray with one of two shapes:
+        flatten = False: (row, column, time, lower_dim, lower_dim).
+        flatten = True: (row*column, time, lower_dim, lower_dim) 
     Lower dim should be a factor of 1000."""
 
-    cropped = dataset[:,12:1012,12:1012]
-    num_subarrays = int(1000 / lower_dim)
+    og_dim = 1024
+    num_subarrays = og_dim // lower_dim
+    margin = (og_dim - (num_subarrays * lower_dim)) // 2
+    cropped = dataset[:, margin:og_dim-margin, margin:og_dim-margin]
 
     col_split = np.array(np.split(cropped, num_subarrays, 2))
     col_row_split = np.array(np.split(col_split, num_subarrays, 2))
@@ -170,44 +172,77 @@ def chunk(dataset, lower_dim, flatten=False):
     time_axis = col_row_split.shape[2]
     return np.reshape(col_row_split, (num_subarrays ** 2, time_axis, lower_dim, lower_dim))
 
+def rotate(dataset, flatten=True):
+    """Takes a flattened dataset with shape (samples, time, dim, dim) and returns rotated samples with one of two shapes:
+            flatten = False: (samples, 4, time, dim, dim).
+            flatten = True: (samples*4, time, dim, dim) 
+    """
+    rotate_once = lambda ndarray : np.array([om.video.rotate_left(video) for video in ndarray])
+    rotated_1 = rotate_once(dataset)
+    rotated_2 = rotate_once(rotated_1)
+    rotated_3 = rotate_once(rotated_2)
+    dataset = np.array([dataset, rotated_1, rotated_2, rotated_3])
+    dataset = np.swapaxes(dataset, 0, 1)
+    if flatten:
+        samples, num_rotations, time, lower_dim, lower_dim_2 = dataset.shape
+        return np.reshape(dataset, (4*samples, time, lower_dim, lower_dim))
+    return dataset
+
+def splice(dataset: np.ndarray, frames, flatten=True):
+    """Takes a flattened dataset with shape (samples, time, dim, dim) and returns spliced samples with one of two shapes:
+            flatten = False: (samples, time//frames, frames, dim, dim)
+            flatten = True: (samples*(time//frames), frames, dim, dim) 
+    """
+    time = dataset.shape[1]
+    split_count, remainder = time // frames, time % frames
+    cropped = dataset[:,:time-remainder,:,:]
+    cropped_spliced = np.array(np.split(cropped, split_count, 1))
+    if not flatten:
+        return np.swapaxes(cropped_spliced, 0, 1)
+
+    samples, dim = dataset.shape[1], dataset.shape[-1]
+    return np.reshape(dataset, (samples*split_count, frames, dim, dim))
 
 #%% real code
 path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\media\\"
-start_id = 100
-end_id = 199
-filename_channels = [0,1,2,3,4]
+start_id = 200
+end_id = 299
+filename_channels = [0,1,2]
 subset_channels = []
 save_subsets = False
 
 
 
-#download_npys_from_box(start_id,end_id,save_file=True)
-dataset_100s: np.ndarray = load_from_npy(start_id, end_id, filename_channels, subset_channels, save_subsets)
-#print(dataset_100s.shape)
+#download_npys_from_box(200,299,channels=[0,1,2],save_file=True)
+dataset: np.ndarray = load_from_npy(200, 299, [0,1,2], subset_channels, save_subsets)
+#dataset_100s: np.ndarray = load_from_npy(100, 199, [0,1,2,3,4], subset_channels, save_subsets)
 
-dataset_100_c0 = dataset_100s[0]
+dataset_c0 = dataset[0]
+# dataset_100s_c0 = dataset_100s[0]
+# mc.show(dataset_c0)
+# mc.show(dataset_100s_c0)
 
-print(f"Channel 0 shape: {dataset_100_c0.shape}")
-chunked_dataset = chunk(dataset_100_c0, 500, flatten=False)
-chunked_dataset_flattened = chunk(dataset_100_c0, 500, flatten=True)
-print(chunked_dataset.shape)
+print(f"Original channel 0 shape: {dataset_c0.shape}")
+chunked_dataset = chunk(dataset_c0, 200, flatten=False)
+chunked_dataset_flattened = chunk(dataset_c0, 200, flatten=True)
+print(chunked_dataset_flattened.shape)
+chunked_dataset_rotated = rotate(chunked_dataset_flattened, flatten=True)
+print(chunked_dataset_rotated.shape)
+final = splice(chunked_dataset_rotated, 5, flatten=True)
+print(final.shape)
 
-collage_video = om.video.collage([ndarray for ndarray in chunked_dataset_flattened], ncols=2, padding=20, padding_value=0)
+mc.show(final[0])
+om.video.show_videos(final[0][0], titles=["0", "90", "180", "270"], cmaps="Grays", interval=20)
+
+collage_video = om.video.collage([ndarray for ndarray in chunked_dataset_flattened], ncols=5, padding=20, padding_value=0)
 om.video.show_video(collage_video, cmap="Grays", interval=20)
-om.video.export_video(path_start + "dataset_c0_100-199_collage_2.mp4", collage_video)
+#om.video.export_video(path_start + "dataset_c0_100-199_collage_2.mp4", collage_video)
 
-random_coords = [(int(rand_coord[0]), int(rand_coord[1])) for rand_coord in np.random.randint(0, 2, size=(3,2))]
-random_videos = [chunked_dataset[rand_coord] for rand_coord in random_coords]
-om.video.show_videos(random_videos, titles=random_coords, cmaps="Grays", interval=20)
-
-# test = chunked_dataset[0,0,0]
-# test_2 = np.zeros((200,200))
-# print(test.shape)
-# #cv2.Mat()
-# # test2 = cv2.resize(test, (200,200))
-# print(test_2.shape)
-# plt.imshow(test_2)
-# plt.show()
+for video in chunked_dataset_flattened:
+    om.video.show_video(video, interval=50)
+# random_coords = [(int(rand_coord[0]), int(rand_coord[1])) for rand_coord in np.random.randint(0, 2, size=(3,2))]
+# random_videos = [chunked_dataset[rand_coord] for rand_coord in random_coords]
+# om.video.show_videos(random_videos, titles=random_coords, cmaps="Grays", interval=20)
 
 
 # %%
