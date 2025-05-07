@@ -232,7 +232,8 @@ final = splice(chunked_dataset_rotated, 5, flatten=True)
 print(final.shape)
 
 mc.show(final[0])
-om.video.show_videos(final[0][0], titles=["0", "90", "180", "270"], cmaps="Grays", interval=20)
+om.video.show_videos(final[0:5], cmaps="Grays", interval=20)
+#om.video.show_videos(final[0][:5], titles=["0", "90", "180", "270"], cmaps="Grays", interval=20)
 
 collage_video = om.video.collage([ndarray for ndarray in chunked_dataset_flattened], ncols=5, padding=20, padding_value=0)
 om.video.show_video(collage_video, cmap="Grays", interval=20)
