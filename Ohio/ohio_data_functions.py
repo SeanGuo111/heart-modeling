@@ -11,29 +11,55 @@ from boxsdk import DevelopmentClient
 from tqdm import tqdm
 # import cv2; installing opencv may cause matplotlib issues with qt; remove opencv to fix this
 
-def load_individual_dataset(data_id: int, npy_or_csv: str = "npy", save_file: bool = False):
-    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\first_data_batch\\"
-    data_path = path_start + f"data_{data_id}"
+def load_individual_dataset(data_id: int, npy_or_csv: str = "npy", 
+                            data_path = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\first_data_batch\\",
+                            save_path = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\first_data_batch\\",
+                            save_file: bool = False):
+    data_path_full = data_path + f"data_{data_id}"
 
     length = 1024*1024
     data = None
 
     if npy_or_csv == "npy":
-        data = np.load(data_path + ".npy")
+        data = np.load(data_path_full + ".npy")
         
     elif npy_or_csv == "csv":
-        data = np.loadtxt(data_path + ".csv", delimiter=",", usecols=range(length)) 
+        data = np.loadtxt(data_path_full + ".csv", delimiter=",", usecols=range(length)) 
         #usecols=range(length) ensures np ignores last element of each row, which it was interpreting as nan in genfromtxt
         #loadtxt wayyyy faster than genfromtxt (0.5s vs. ~6-7s)
         data = data.reshape((5,1024,1024))
-        if save_file: np.save(data_path, data)
+        if save_file: np.save(save_path, data)
     else:
         print("Specify txt or csv to load")
         return
 
     return data
 
-def download_npys_from_box(start_data_id, end_data_id, channels=[0,1,2,3,4], save_file: bool = False):
+def download_npys_from_disk(start_data_id, end_data_id, channels=[0,1,2,3,4],
+                            data_path = "/mnt/data2/sean/data/dataset01/",
+                            save_path = "/mnt/data2/sean/data/dataset01/",
+                            save_file: bool = False):
+    """
+    Saves box csvs with given ids and specified channels as .npy files, each with shape (channels, dim, dim)
+    Save_file false by default as a safety
+    """
+    dim = 1024
+    channel_count = len(channels)
+    channel_str = "".join(map(str, channels))
+    
+    print(f"Downloading csv files {start_data_id}-{end_data_id}")
+    for id in tqdm(range(start_data_id, end_data_id+1)):
+        data_path_full = data_path + f"data_{id}.csv"
+        data = np.loadtxt(data_path_full, delimiter=",", usecols=range(dim*dim))
+
+        channeled = data[channels][:] 
+        reshaped = channeled.reshape((channel_count,dim,dim))
+        file_save_name = save_path + f"npydata_c{channel_str}_{id}.npy"
+        if save_file: np.save(file_save_name, reshaped)
+    
+
+def download_npys_from_box(start_data_id, end_data_id, channels=[0,1,2,3,4], 
+                           save_path = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\", save_file: bool = False):
     """
     Saves box csvs with given ids and specified channels as .npy files, each with shape (channels, dim, dim)
     Save_file false by default as a safety
@@ -52,7 +78,6 @@ def download_npys_from_box(start_data_id, end_data_id, channels=[0,1,2,3,4], sav
     dim = 1024
     channel_count = len(channels)
     channel_str = "".join(map(str, channels))
-    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\"
     counter = 1
 
     for file_box in all_files:
@@ -68,13 +93,16 @@ def download_npys_from_box(start_data_id, end_data_id, channels=[0,1,2,3,4], sav
             data = np.loadtxt(file, delimiter=",", usecols=range(dim*dim))
             channeled = data[channels][:] 
             reshaped = channeled.reshape((channel_count,dim,dim))
-            file_save_name = path_start + f"npydata_c{channel_str}_{file_name[5:-4]}.npy"
+            file_save_name = save_path + f"npydata_c{channel_str}_{file_name[5:-4]}.npy"
             if save_file: np.save(file_save_name, reshaped)
 
             counter += 1
 
 
-def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], subset_channels=None, save_subsets=False):
+def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], subset_channels=None, 
+                  data_path = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\",
+                  save_path = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\",
+                  save_subsets=False):
     """Returns single ndarray with shape (channels, time, dim, dim), from filenames with certain channels and an optional
     subset of those filename channels that are actually selected to be in the loaded dataset. 
     Subset defaults to being equal to filename_channels.
@@ -86,7 +114,6 @@ def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], sub
         print("Subset channels should be a subset of the filename channels")
         return
 
-    path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\second_data_batch\\"
     channel_str = "".join(map(str, filename_channels))
     subset_str = "".join(map(str, subset_channels))
     
@@ -97,13 +124,13 @@ def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], sub
     
     index = 0
     for id in tqdm(range(start_data_id, end_data_id+1)):  
-        data_path = path_start + f"npydata_c{channel_str}_{id}.npy"    
-        raw = np.load(data_path)
+        data_path_full = data_path + f"npydata_c{channel_str}_{id}.npy"    
+        raw = np.load(data_path_full)
         channeled = raw[subset_channels][:] 
         dataset[index] = channeled
 
         if save_subsets:
-            file_save_name = path_start + f"npydata_c{subset_str}_{id}.npy"
+            file_save_name = save_path + f"npydata_c{subset_str}_{id}.npy"
             np.save(file_save_name, channeled)
 
         index += 1
@@ -113,6 +140,7 @@ def load_from_npy(start_data_id, end_data_id, filename_channels=[0,1,2,3,4], sub
 
 def on_press(event):
     global current_time
+    global dataset_c0
     current_time += 1
     plt.imshow(dataset_c0[current_time])
     plt.title(f"T = {current_time}")
@@ -202,48 +230,3 @@ def splice(dataset: np.ndarray, frames, flatten=True):
 
     samples, dim = dataset.shape[1], dataset.shape[-1]
     return np.reshape(dataset, (samples*split_count, frames, dim, dim))
-
-#%% real code
-path_start = "C:\\Users\\swguo\\VSCode Projects\\Heart Modeling\\Ohio\\media\\"
-start_id = 200
-end_id = 299
-filename_channels = [0,1,2]
-subset_channels = []
-save_subsets = False
-
-
-
-#download_npys_from_box(200,299,channels=[0,1,2],save_file=True)
-dataset: np.ndarray = load_from_npy(200, 299, [0,1,2], subset_channels, save_subsets)
-#dataset_100s: np.ndarray = load_from_npy(100, 199, [0,1,2,3,4], subset_channels, save_subsets)
-
-dataset_c0 = dataset[0]
-# dataset_100s_c0 = dataset_100s[0]
-# mc.show(dataset_c0)
-# mc.show(dataset_100s_c0)
-
-print(f"Original channel 0 shape: {dataset_c0.shape}")
-chunked_dataset = chunk(dataset_c0, 200, flatten=False)
-chunked_dataset_flattened = chunk(dataset_c0, 200, flatten=True)
-print(chunked_dataset_flattened.shape)
-chunked_dataset_rotated = rotate(chunked_dataset_flattened, flatten=True)
-print(chunked_dataset_rotated.shape)
-final = splice(chunked_dataset_rotated, 5, flatten=True)
-print(final.shape)
-
-mc.show(final[0])
-om.video.show_videos(final[0:5], cmaps="Grays", interval=20)
-#om.video.show_videos(final[0][:5], titles=["0", "90", "180", "270"], cmaps="Grays", interval=20)
-
-collage_video = om.video.collage([ndarray for ndarray in chunked_dataset_flattened], ncols=5, padding=20, padding_value=0)
-om.video.show_video(collage_video, cmap="Grays", interval=20)
-#om.video.export_video(path_start + "dataset_c0_100-199_collage_2.mp4", collage_video)
-
-for video in chunked_dataset_flattened:
-    om.video.show_video(video, interval=50)
-# random_coords = [(int(rand_coord[0]), int(rand_coord[1])) for rand_coord in np.random.randint(0, 2, size=(3,2))]
-# random_videos = [chunked_dataset[rand_coord] for rand_coord in random_coords]
-# om.video.show_videos(random_videos, titles=random_coords, cmaps="Grays", interval=20)
-
-
-# %%
