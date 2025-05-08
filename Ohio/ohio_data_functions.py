@@ -216,7 +216,7 @@ def rotate(dataset, flatten=True):
         return np.reshape(dataset, (4*samples, time, lower_dim, lower_dim))
     return dataset
 
-def splice(dataset: np.ndarray, frames, flatten=True):
+def splice(dataset: np.ndarray, frames=5, flatten=True):
     """Takes a flattened dataset with shape (samples, time, dim, dim) and returns spliced samples with one of two shapes:
             flatten = False: (samples, time//frames, frames, dim, dim)
             flatten = True: (samples*(time//frames), frames, dim, dim) 
@@ -227,6 +227,6 @@ def splice(dataset: np.ndarray, frames, flatten=True):
     cropped_spliced = np.array(np.split(cropped, split_count, 1))
     if not flatten:
         return np.swapaxes(cropped_spliced, 0, 1)
-
-    samples, dim = dataset.shape[1], dataset.shape[-1]
-    return np.reshape(dataset, (samples*split_count, frames, dim, dim))
+    
+    variations, dim = dataset.shape[0], dataset.shape[-1]
+    return np.reshape(dataset, (variations*split_count, frames, dim, dim))
