@@ -15,7 +15,7 @@ save_subsets = False
 dataset: np.ndarray = od.load_from_npy(200, 299, [0,1,2], subset_channels, data_path, data_path, save_subsets)
 #dataset_100s: np.ndarray = load_from_npy(100, 199, [0,1,2,3,4], subset_channels, save_subsets)
 
-dataset_c0 = dataset[0]
+dataset_c0 = dataset[2]
 # dataset_100s_c0 = dataset_100s[0]
 # mc.show(dataset_c0)
 # mc.show(dataset_100s_c0)
@@ -35,7 +35,7 @@ om.video.show_videos(final[0:5], cmaps="Grays", interval=20)
 
 collage_video = om.video.collage([ndarray for ndarray in chunked_dataset_flattened], ncols=5, padding=20, padding_value=0)
 om.video.show_video(collage_video, cmap="Grays", interval=20)
-#om.video.export_video(path_start + "dataset_c0_100-199_collage_2.mp4", collage_video)
+om.video.export_video(media_path_start + "dataset_c2_200-299_collage.mp4", collage_video)
 
 for video in chunked_dataset_flattened:
     om.video.show_video(video, interval=50)
