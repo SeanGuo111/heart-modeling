@@ -75,7 +75,7 @@ def process_pixel(v_series, cb_series, window_size=20, step_size=1):
         cb_window = cb_shifted[i:i+window_size]
         window_correlations[idx] = fast_corrcoef(v_window, cb_window)
     
-    return global_time_delay, window_correlations,cb_shifted
+    return global_time_delay, window_correlations, cb_shifted
 
 def process_matrices(v_out, cb_out, window_size=20, step_size=1):
     """Process matrices where dimensions are (time, x, y)"""
@@ -107,9 +107,9 @@ def process_matrices(v_out, cb_out, window_size=20, step_size=1):
             global_delays[i, j] = global_delay
             # Store windowed correlations with time as first dimension
             windowed_correlations[:, i, j] = window_corrs
-            #ca_delayed[:,i,j] = cb_shifted
+            # ca_delayed[:,i,j] = cb_shifted
     
-    return global_delays, windowed_correlations,ca_delayed
+    return global_delays, windowed_correlations, ca_delayed
 
 
 
