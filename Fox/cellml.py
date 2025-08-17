@@ -342,7 +342,10 @@ def solve_model():
     (init_states, constants) = initConsts()
 
     # Set timespan to solve over
-    voi = linspace(0, 10, 500)
+    start = 0
+    end = 50000
+    h = (end-start)*10
+    voi = linspace(start, end, h)
 
     # Construct ODE object to solve
     r = ode(computeRates)
@@ -376,4 +379,8 @@ def plot_model(voi, states, algebraic):
 
 if __name__ == "__main__":
     (voi, states, algebraic) = solve_model()
-    plot_model(voi, states, algebraic)
+    #plot_model(voi, states, algebraic)
+    import matplotlib.pyplot as plt
+    print(states.shape)
+    plt.plot(voi, states[0,:])
+    plt.show()
