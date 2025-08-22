@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 
 # parameters
-nt = 100000         # total number of integration steps
+nt = 1000         # total number of integration steps
 dt = 0.001         # integration time step
 eps = 0.08          # recovery rate
 a = 0.5             # excitation threshold
