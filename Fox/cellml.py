@@ -4,6 +4,7 @@ sizeStates = 13
 sizeConstants = 55
 from math import *
 from numpy import *
+from tqdm import tqdm
 
 def createLegends():
     legend_states = [""] * sizeStates
@@ -343,8 +344,8 @@ def solve_model():
 
     # Set timespan to solve over
     start = 0
-    end = 50000
-    h = (end-start)*10
+    end = 300
+    h = (end-start)*10 + 1
     voi = linspace(start, end, h)
 
     # Construct ODE object to solve
@@ -353,10 +354,13 @@ def solve_model():
     r.set_initial_value(init_states, voi[0])
     r.set_f_params(constants)
 
+    initial_rates = computeRates(voi[0], init_states, constants)
+    print(f"Initial rates: {initial_rates}")
+
     # Solve model
     states = array([[0.0] * len(voi)] * sizeStates)
     states[:,0] = init_states
-    for (i,t) in enumerate(voi[1:]):
+    for (i,t) in tqdm(enumerate(voi[1:])):
         if r.successful():
             r.integrate(t)
             states[:,i+1] = r.y
@@ -383,4 +387,6 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     print(states.shape)
     plt.plot(voi, states[0,:])
+    plt.show()
+    plt.plot(voi, algebraic[10,:])
     plt.show()
