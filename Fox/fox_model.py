@@ -22,9 +22,10 @@ def set_initial_conditions():
     10. XKs
     11. Xto
     12. Yto
+    13. w (Omichi)
     """
 
-    var = np.zeros(13,dtype=np.float64)
+    var = np.zeros(14,dtype=np.float64)
     var[0] = -94.7 
     var[1] = 0.0472 
     var[2] = 320 
@@ -38,14 +39,14 @@ def set_initial_conditions():
     var[10] = 0.0001
     var[11] = 3.742 * (10**-5)
     var[12] = 1
-    
+    var[13] = 0.9 #???? Only chosen because ICa inactivation gates (f and fCa) start high, around 0.9-1.
     return var
 
 njit()
 def function(t,var):
-    df = np.zeros(13,dtype=np.float64)
+    df = np.zeros(14,dtype=np.float64)
     
-    df = Istim(t,var,df)
+    df = ic.Istim(t,var,df)
     
     df, ENa = ic.INa(t,var,df)
     # df = np.zeros(13,dtype=np.float64)
@@ -79,18 +80,12 @@ def function(t,var):
 
     df = ic.ICaK(t, var, df, VFRT, ICa_max)
 
-    df = ic.calcium_handling(t, var, df, ICa_val, ICab_val, IpCa_val, INaCa_val)
+    df = ic.calcium_handling_omichi(t, var, df, ICa_val, ICab_val, IpCa_val, INaCa_val)
 
     # Flip sum of voltage sum -------------
     df[0] = -df[0]
     return df
 
-def Istim(t,var,df):
-    #NOTE: RECONFIGURE
-    if t > 10 and t < 11:
-        print(t)
-        df[0] += -80
-    return df
 
 # Variables
 var = set_initial_conditions()
@@ -106,7 +101,7 @@ init_states = set_initial_conditions()
 
 # Set timespan to solve over
 start = 0
-end = 300
+end = 800
 h = 10
 num_points = (end-start)*h + 1
 t = np.linspace(start, end, num_points)
@@ -120,7 +115,7 @@ initial_rates = function(t[0], init_states)
 print(f"Initial rates: {initial_rates}")
 
 # Solve model
-states = np.zeros((13,num_points))
+states = np.zeros((14,num_points))
 states[:,0] = init_states
 for (i,t_end) in tqdm(enumerate(t[1:])):
     if r.successful():

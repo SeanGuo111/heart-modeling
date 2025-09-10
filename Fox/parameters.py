@@ -1,3 +1,5 @@
+import numpy as np
+
 GNa = 12.8
 GK1 = 2.8
 GKr = 0.0136
@@ -46,3 +48,12 @@ Ki = 149.4
 Nao = 138
 Ko = 4
 Cao = 2000
+
+# Omichi
+k2 = 4
+koff = 0.0105
+v1 = 0.02
+kup = 0.25
+beta = 0.02
+v2 = 1.5 * (10**-4)
+vup = 0.1

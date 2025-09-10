@@ -2,6 +2,20 @@ import numpy as np
 from numba import njit
 from parameters import *
 
+njit()
+def Istim(t,var,df):
+    #NOTE: RECONFIGURE
+
+    if t > 100 and t < 101:
+        print(t)
+        df[0] += -80
+    elif t > 500 and t < 501:
+        print(t)
+        df[0] += -80
+
+
+    return df
+
 # VERIFIED
 njit()
 def INa(t,var,df):
@@ -227,7 +241,7 @@ def ICaK(t,var,df,VFRT,ICa_max):
 
 # VERIFIED
 njit()
-def calcium_handling(t,var,df, ICa, ICab, IpCa, INaCa):
+def calcium_handling_fox(t,var,df, ICa, ICab, IpCa, INaCa):
     V = var[0]
     Cai = var[1]
     CaSR = var[2]
@@ -245,5 +259,24 @@ def calcium_handling(t,var,df, ICa, ICab, IpCa, INaCa):
 
     df[1] = betai * (Jrel + Jleak - Jup - (Acap*Csc/(2*F*Vmyo) * (ICa + ICab + IpCa - 2*INaCa)))
     df[2] = betaSR * (Jup - Jleak - Jrel)*Vmyo/VSR
+
+    return df
+
+def calcium_handling_omichi(t,var,df, ICa, ICab, IpCa, INaCa):
+    Cai = var[1]
+    CaSR = var[2]
+    w = var[13]
+    
+    # Constants:
+    Cs = (CaSR - Cai) / beta
+    Irel = v1*w*(Cai**2)/(Cai**2 + kup**2) * (Cs - Cai)
+    Ileak = v2 * (Cs - Cai)
+    Iup = vup*(Cai**2) / (Cai**2 + kup**2)
+    winf = 1 / (1 + (k2**2)*(Cai**2))
+    tauw = winf * Cai * k2 / koff
+
+    df[1] = Irel + Ileak - Iup - (Acap*Cs/(2*F*Vmyo) * (ICa + ICab + IpCa - 2*INaCa))
+    df[2] = -(Acap*Cs/(2*F*Vmyo) * (ICa + ICab + IpCa - 2*INaCa))
+    df[13] = (winf - w) / tauw
 
     return df
