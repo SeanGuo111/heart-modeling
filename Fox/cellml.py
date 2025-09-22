@@ -215,6 +215,20 @@ def initConsts():
     constants[54] = 30.0000
     return (states, constants)
 
+def Istim(t):
+    #NOTE: RECONFIGURE
+    if t > 100 and t < 101:
+        print(t)
+        return -80
+    elif t > 700 and t < 701:
+        print(t)
+        return -80
+    # elif t > 900 and t < 901:
+    #     print(t)
+    #     return -80
+
+    return 0
+
 def computeRates(voi, states, constants):
     rates = [0.0] * sizeStates; algebraic = [0.0] * sizeAlgebraic
     algebraic[9] = 1.00000/(1.00000+power(states[8]/constants[38], 3.00000))
@@ -267,7 +281,8 @@ def computeRates(voi, states, constants):
     algebraic[35] = ((constants[0]*constants[1])/(2.00000*constants[2]))*log(constants[29]/states[8])
     algebraic[36] = constants[32]*(states[0]-algebraic[35])
     algebraic[37] = constants[33]*(states[0]-constants[50])
-    algebraic[10] = custom_piecewise([greater_equal(voi , constants[3]) & less_equal(voi , constants[4]) & less_equal((voi-constants[3])-floor((voi-constants[3])/constants[5])*constants[5] , constants[6]), constants[7] , True, 0.00000])
+    algebraic[10] = Istim(voi)
+    #custom_piecewise([greater_equal(voi , constants[3]) & less_equal(voi , constants[4]) & less_equal((voi-constants[3])-floor((voi-constants[3])/constants[5])*constants[5] , constants[6]), constants[7] , True, 0.00000])
     rates[0] = -(algebraic[20]+algebraic[39]+algebraic[40]+algebraic[26]+algebraic[27]+algebraic[28]+algebraic[24]+algebraic[30]+algebraic[33]+algebraic[32]+algebraic[34]+algebraic[37]+algebraic[36]+algebraic[10])
     algebraic[42] = 1.00000/(1.00000+power(2000.00/states[12], 3.00000))
     algebraic[43] = (constants[43]*states[9]*states[10]*states[11]*(algebraic[42]*states[12]-states[8]))/(1.00000+1.65000*exp(states[0]/20.0000))
@@ -344,13 +359,13 @@ def solve_model():
 
     # Set timespan to solve over
     start = 0
-    end = 300
+    end = 1100
     h = (end-start)*10 + 1
     voi = linspace(start, end, h)
 
     # Construct ODE object to solve
     r = ode(computeRates)
-    r.set_integrator('vode', method='bdf', atol=1e-06, rtol=1e-06, max_step=1)
+    r.set_integrator('vode', method="bdf", atol=1e-08, rtol=1e-08, max_step=1)
     r.set_initial_value(init_states, voi[0])
     r.set_f_params(constants)
 
@@ -386,7 +401,30 @@ if __name__ == "__main__":
     #plot_model(voi, states, algebraic)
     import matplotlib.pyplot as plt
     print(states.shape)
-    plt.plot(voi, states[0,:])
-    plt.show()
-    plt.plot(voi, algebraic[10,:])
+    voltage = states[0,:]
+    ca_i = states[8,:]
+    ca_SR = states[12,:]
+
+
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    plt.sca(ax1)
+    plt.title("Voltage")
+    plt.plot(voi, voltage)
+    plt.sca(ax2)
+    # plt.title("Intracellular calcium")
+    # plt.plot(t, ca_i)
+    # plt.show()
+    # plt.title("ICa")
+    # plt.plot(t, ICa)
+    # plt.show()
+
+    plt.clf()
+    voltage_normalized = (voltage-min(voltage))/(max(voltage)-min(voltage))
+    ca_i_normalized = (ca_i-min(ca_i))/(max(ca_i)-min(ca_i))
+    ca_SR_normalized = (ca_SR-min(ca_SR))/(max(ca_SR)-min(ca_SR))
+
+    plt.plot(voi, voltage_normalized, label="V")
+    plt.plot(voi, ca_i_normalized, label = "Ca_i")
+    plt.plot(voi, ca_SR_normalized, label = "Ca_SR")
+    plt.legend()
     plt.show()

@@ -6,6 +6,8 @@ from scipy.integrate import ode
 from parameters import *
 import ionic_currents as ic
 
+ICa = []
+
 def set_initial_conditions():
     """
     Key:
@@ -76,6 +78,7 @@ def function(t,var):
 
     df, ICa_val, ICa_max = ic.ICa(t, var, df, VFRT)
     # df = np.zeros(13,dtype=np.float64)
+    ICa.append(ICa_val)
 
     df = ic.ICaK(t, var, df, VFRT, ICa_max)
 
@@ -87,9 +90,16 @@ def function(t,var):
 
 def Istim(t,var,df):
     #NOTE: RECONFIGURE
-    if t > 10 and t < 11:
+    if t > 100 and t < 101:
         print(t)
         df[0] += -80
+    elif t > 500 and t < 501:
+        print(t)
+        df[0] += -80
+    elif t > 900 and t < 901:
+        print(t)
+        df[0] += -80
+
     return df
 
 # Variables
@@ -106,7 +116,7 @@ init_states = set_initial_conditions()
 
 # Set timespan to solve over
 start = 0
-end = 300
+end = 1400
 h = 10
 num_points = (end-start)*h + 1
 t = np.linspace(start, end, num_points)
@@ -137,9 +147,12 @@ plt.sca(ax1)
 plt.title("Voltage")
 plt.plot(t, voltage)
 plt.sca(ax2)
-plt.title("Intracellular calcium")
-plt.plot(t, ca_i)
-plt.show()
+# plt.title("Intracellular calcium")
+# plt.plot(t, ca_i)
+# plt.show()
+# plt.title("ICa")
+# plt.plot(t, ICa)
+# plt.show()
 
 plt.clf()
 voltage_normalized = (voltage-np.min(voltage))/(np.max(voltage)-np.min(voltage))
@@ -150,5 +163,9 @@ ca_SR_normalized = (ca_SR-np.min(ca_SR))/(np.max(ca_SR)-np.min(ca_SR))
 plt.plot(t, voltage_normalized, label="V")
 plt.plot(t, ca_i_normalized, label = "Ca_i")
 plt.plot(t, ca_SR_normalized, label = "Ca_SR")
+plt.legend()
+plt.show()
+
+plt.plot(t, ca_SR, label = "Ca_SR")
 plt.legend()
 plt.show()
