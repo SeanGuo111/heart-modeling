@@ -1,10 +1,13 @@
-import numpy as np
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-from numba import njit
-from scipy.integrate import ode
 from parameters import *
 import ionic_currents as ic
+import numpy as np
+from numba import njit
+import matplotlib.pyplot as plt
+
+from tqdm import tqdm
+import timeit
+from scipy.integrate import ode
+from scipy.integrate import solve_ivp
 
 def set_initial_conditions():
     """
@@ -44,6 +47,9 @@ def set_initial_conditions():
 
 njit()
 def function(t,var):
+    if (np.floor(t) % 100 == 0):
+        print(t)
+
     df = np.zeros(14,dtype=np.float64)
     
     df = ic.Istim(t,var,df)
@@ -80,70 +86,64 @@ def function(t,var):
 
     df = ic.ICaK(t, var, df, VFRT, ICa_max)
 
-    df = ic.calcium_handling_omichi(t, var, df, ICa_val, ICab_val, IpCa_val, INaCa_val)
+    df = ic.calcium_handling_fox(t, var, df, ICa_val, ICab_val, IpCa_val, INaCa_val)
 
     # Flip sum of voltage sum -------------
     df[0] = -df[0]
     return df
 
+def solve_scipy(function, t_span, initial_conditions, t_eval):
+    sol = solve_ivp(function, t_span=t_span, y0=initial_conditions, method='RK45', t_eval=t_eval)
+    return sol
+
+def plots(t_eval, states):
+    voltage = states[0,:]
+    ca_i = states[1,:]
+    ca_SR = states[2,:]
+
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    plt.sca(ax1)
+    plt.title("Voltage")
+    plt.plot(t_eval, voltage)
+    plt.sca(ax2)
+    plt.title("Intracellular calcium")
+    plt.plot(t_eval, ca_i)
+    plt.show()
+    plt.clf()
+
+    voltage_normalized = (voltage-np.min(voltage))/(np.max(voltage)-np.min(voltage))
+    ca_i_normalized = (ca_i-np.min(ca_i))/(np.max(ca_i)-np.min(ca_i))
+    ca_SR_normalized = (ca_SR-np.min(ca_SR))/(np.max(ca_SR)-np.min(ca_SR))
+
+    plt.plot(t_eval, voltage_normalized, label="V")
+    plt.plot(t_eval, ca_i_normalized, label = "Ca_i")
+    plt.plot(t_eval, ca_SR_normalized, label = "Ca_SR")
+    plt.legend()
+    plt.show()
+
 
 # Variables
-var = set_initial_conditions()
+initial_conditions = set_initial_conditions()
 print("Initial conditions:")
-print(var)
+print(initial_conditions)
 
-df_test = function(0, var)
+df_test = function(0, initial_conditions)
 print("\nDerivatives at time = 0, with initial conditions and given parameters:")
 print(df_test)
-
-# Initialise constants and state variables
-init_states = set_initial_conditions()
 
 # Set timespan to solve over
 start = 0
 end = 800
 h = 10
 num_points = (end-start)*h + 1
-t = np.linspace(start, end, num_points)
+t_span = (start, end)
+t_eval = np.linspace(start, end, num_points)
 
-# Construct ODE object to solve
-r = ode(function)
-r.set_integrator('vode', method='bdf', atol=1e-06, rtol=1e-06, max_step=1)
-r.set_initial_value(init_states, t[0])
+# Solve
+sol = solve_scipy(function, t_span, initial_conditions, t_eval)
+states = sol.y
+time = timeit.Timer(lambda: solve_scipy(function, t_span, initial_conditions, t_eval)).timeit(number=100)
+print(f"Time: {time}")
 
-initial_rates = function(t[0], init_states)
-print(f"Initial rates: {initial_rates}")
+plots(t_eval, states)
 
-# Solve model
-states = np.zeros((14,num_points))
-states[:,0] = init_states
-for (i,t_end) in tqdm(enumerate(t[1:])):
-    if r.successful():
-        r.integrate(t_end)
-        states[:,i+1] = r.y
-    else:
-        break
-voltage = states[0,:]
-ca_i = states[1,:]
-
-
-fig, (ax1, ax2) = plt.subplots(1,2)
-plt.sca(ax1)
-plt.title("Voltage")
-plt.plot(t, voltage)
-plt.sca(ax2)
-plt.title("Intracellular calcium")
-plt.plot(t, ca_i)
-plt.show()
-
-plt.clf()
-voltage_normalized = (voltage-np.min(voltage))/(np.max(voltage)-np.min(voltage))
-ca_i_normalized = (ca_i-np.min(ca_i))/(np.max(ca_i)-np.min(ca_i))
-ca_SR = states[2,:]
-ca_SR_normalized = (ca_SR-np.min(ca_SR))/(np.max(ca_SR)-np.min(ca_SR))
-
-plt.plot(t, voltage_normalized, label="V")
-plt.plot(t, ca_i_normalized, label = "Ca_i")
-plt.plot(t, ca_SR_normalized, label = "Ca_SR")
-plt.legend()
-plt.show()

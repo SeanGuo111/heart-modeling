@@ -7,12 +7,9 @@ def Istim(t,var,df):
     #NOTE: RECONFIGURE
 
     if t > 100 and t < 101:
-        print(t)
         df[0] += -80
     elif t > 500 and t < 501:
-        print(t)
         df[0] += -80
-
 
     return df
 

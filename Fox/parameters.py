@@ -57,3 +57,5 @@ kup = 0.25
 beta = 0.02
 v2 = 1.5 * (10**-4)
 vup = 0.1
+
+# Computation
