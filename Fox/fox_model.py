@@ -8,6 +8,7 @@ from tqdm import tqdm
 import timeit
 from scipy.integrate import ode
 from scipy.integrate import solve_ivp
+#from diffeqpy import de
 
 def set_initial_conditions():
     """
@@ -29,6 +30,7 @@ def set_initial_conditions():
     """
 
     var = np.zeros(14,dtype=np.float64)
+    #var = [None] * 14
     var[0] = -94.7 
     var[1] = 0.0472 
     var[2] = 320 
@@ -46,9 +48,8 @@ def set_initial_conditions():
     return var
 
 njit()
-def function(t,var):
-    if (np.floor(t) % 100 == 0):
-        print(t)
+def function(var,parameters,t):
+    print(t)
 
     df = np.zeros(14,dtype=np.float64)
     
@@ -88,9 +89,9 @@ def function(t,var):
 
     df = ic.calcium_handling_fox(t, var, df, ICa_val, ICab_val, IpCa_val, INaCa_val)
 
-    # Flip sum of voltage sum -------------
+    # Flip sum of voltage -------------
     df[0] = -df[0]
-    return df
+    return df.tolist() # for diffeqpy
 
 def solve_scipy(function, t_span, initial_conditions, t_eval):
     sol = solve_ivp(function, t_span=t_span, y0=initial_conditions, method='RK45', t_eval=t_eval)
@@ -126,8 +127,9 @@ def plots(t_eval, states):
 initial_conditions = set_initial_conditions()
 print("Initial conditions:")
 print(initial_conditions)
+params = 1.0
 
-df_test = function(0, initial_conditions)
+df_test = function(initial_conditions, params, 0)
 print("\nDerivatives at time = 0, with initial conditions and given parameters:")
 print(df_test)
 
@@ -140,10 +142,17 @@ t_span = (start, end)
 t_eval = np.linspace(start, end, num_points)
 
 # Solve
-sol = solve_scipy(function, t_span, initial_conditions, t_eval)
-states = sol.y
-time = timeit.Timer(lambda: solve_scipy(function, t_span, initial_conditions, t_eval)).timeit(number=100)
-print(f"Time: {time}")
+# sol = solve_scipy(function, t_span, initial_conditions, t_eval)
+# states = sol.y
+# time = timeit.Timer(lambda: solve_scipy(function, t_span, initial_conditions, t_eval)).timeit(number=1)
+# print(f"Time: {time}")
 
+#print(initial_conditions.shape)
+prob = de.ODEProblem(function, initial_conditions, (0.,800.))
+#time = timeit.Timer(lambda: de.ODEProblem(function, initial_conditions, t_span)).timeit(number=1)
+#fast_prob = de.jit(prob)
+sol = de.solve(prob, saveat=0.1)
+#states = sol.u
+states = de.stack(sol.u)
+print(states.shape)
 plots(t_eval, states)
-
