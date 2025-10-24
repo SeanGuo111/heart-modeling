@@ -25,27 +25,28 @@ function set_initial_conditions()
     12. Yto
     13. w (Omichi)
     """
-
-    var = zeros(14)
-    var[1] = -94.7 
-    var[2] = 0.0472 
-    var[3] = 320 
-    var[4] = 0.983
-    var[5] = 0.0001
-    var[6] = 2.4676 * (10^-4)
-    var[7] = 0.99869
-    var[8] = 0.99887
-    var[9] = 0.942
-    var[10] = 0.229
-    var[11] = 0.0001
-    var[12] = 3.742 * (10^-5)
-    var[13] = 1
-    var[14] = 0.9 #Initial value???? Only chosen because ICa inactivation gates (f and fCa) start high, around 0.9-1.
+    
+    var = zeros(N,N,14)
+    var[:,:,1] .= -94.7 
+    var[:,:,2] .= 0.0472 
+    var[:,:,3] .= 320 
+    var[:,:,4] .= 0.983
+    var[:,:,5] .= 0.0001
+    var[:,:,6] .= 2.4676 * (10^-4)
+    var[:,:,7] .= 0.99869
+    var[:,:,8] .= 0.99887
+    var[:,:,9] .= 0.942
+    var[:,:,10] .= 0.229
+    var[:,:,11] .= 0.0001
+    var[:,:,12] .= 3.742 * (10^-5)
+    var[:,:,13] .= 1
+    var[:,:,14] .= 0.9 #Initial value???? Only chosen because ICa inactivation gates (f and fCa) start high, around 0.9-1.
     # var[14] is also unused for fox's model, only used for omichi.
+   
     return var
 end
 
-function func(var,parameters,t)
+function ionic_functions(var,t)
     df = zeros(14)
     
     df = Istim(t,var,df)
@@ -89,6 +90,18 @@ function func(var,parameters,t)
     return df
 end
 
+function func(var,parameters,t)
+    df = zeros(N,N,14)
+    for i = 1:N
+        for j = 1:N
+            var_point = var[i,j,:]
+            df[i,j,:] = ionic_functions(var_point,t)
+        end
+    end
+
+    return df
+end
+
 # function plots(t_eval, states)
 #     voltage = states[0,:]
 #     ca_i = states[1,:]
@@ -120,16 +133,16 @@ global_logger(TerminalLogger())
 # Variables
 initial_conditions = set_initial_conditions()
 println("Initial conditions:")
-println(initial_conditions)
+println(initial_conditions[1,1,:])
 params = 1.0
 
 df_test = func(initial_conditions, params, 0)
 println("\nDerivatives at time = 0, with initial conditions and given parameters:")
-println(df_test)
+println(df_test[1,1,:])
 
 # Set timespan to solve over
 start_t = 0
-end_t = 4000
+end_t = 2000
 h = 10
 num_points = (end_t-start_t)*h + 1
 t_span = (start_t, end_t)
@@ -139,11 +152,12 @@ prob = DE.ODEProblem(func, initial_conditions, (Float64(start_t),Float64(end_t))
 sol = DE.solve(prob, DE.Tsit5(), saveat=0.1, maxiters=1e8, progress=true)
 #states = sol.u
 states = DE.stack(sol.u)
+println("\nShape of states:")
 println(size(states))
 
-voltage = states[1,:]
-ca_i = states[2,:]
-ca_SR = states[3,:]
+voltage = states[1,1,1,:]
+ca_i = states[1,1,2,:]
+ca_SR = states[1,1,3,:]
 
 println()
 println(size(voltage))

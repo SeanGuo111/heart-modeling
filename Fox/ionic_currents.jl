@@ -1,7 +1,15 @@
 module ionic_currents
 
 export Istim, INa, IK1, IKr, IKs, Ito, IKp, INaK, INaCa, INab, ICab, IpCa, ICa, ICaK, calcium_handling_fox, calcium_handling_omichi
+export N, dx, dy, D
 
+# 2D PARAMETERS
+N = 5
+dx = 0.5
+dy = dx
+D = 0.1
+
+# IONIC PARAMETERS
 GNa = 12.8
 GK1 = 2.8
 GKr = 0.0136
@@ -37,7 +45,7 @@ KmKo = 1.5
 KmpCa = 0.05
 Kmup = 0.32
 CMDNtot = 10
-#CSQNtot = 10000
+#CSQNtot = 10000 (Default)
 CSQNtot = 10000
 
 KmCMDN = 2
