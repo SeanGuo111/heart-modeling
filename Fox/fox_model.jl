@@ -10,20 +10,20 @@ import TerminalLoggers: TerminalLogger
 function set_initial_conditions()
     """
     Key:
-    0: V
-    1. Ca2+i
-    2. Ca2+SR
-    3. f
-    4. d
-    5. m
-    6. h
-    7. j
-    8. fCa
-    9. XKr
-    10. XKs
-    11. Xto
-    12. Yto
-    13. w (Omichi)
+    1: V
+    2. Ca2+i
+    3. Ca2+SR
+    4. f
+    5. d
+    6. m
+    7. h
+    8. j
+    9. fCa
+    10. XKr
+    11. XKs
+    12. Xto
+    13. Yto
+    14. w (Omichi)
     """
     
     var = zeros(N,N,14)
@@ -46,10 +46,11 @@ function set_initial_conditions()
     return var
 end
 
-function ionic_functions(var,t)
+function ionic_functions(var,t,i,j)
+    # i, j only necessary for Istim.
     df = zeros(14)
     
-    df = Istim(t,var,df)
+    df = Istim(t,var,df,i,j)
     
     df, ENa = INa(t,var,df)
     # df = np.zeros(13,dtype=np.float64)
@@ -90,14 +91,53 @@ function ionic_functions(var,t)
     return df
 end
 
+function determine_diffusion_indices(x,y)
+    """Given the x and y indices for a point on the grid, it returns the proper indices
+    so as to allow for Neumann boundary conditions. Specifically, any index outside of
+    the border is set to the index just inside of the border, so values accessed outside
+    the border will be equal to those adjacent.
+    """
+    x_new, y_new = x, y
+    if x_new == 0
+        x_new = 1
+    elseif x_new == N+1
+        x_new = N
+    end
+
+    if y_new == 0
+        y_new = 1
+    elseif y_new == N+1
+        y_new = N
+    end
+
+    return x_new, y_new
+end
+
+function laplacian(var)
+    V = var[:,:,1]
+    laplacian = zeros(N,N)
+    for x_i = 1:N
+        for y_i = 1:N
+            prev_x_i, prev_y_i = determine_diffusion_indices(x_i-1, y_i-1)
+            next_x_i, next_y_i = determine_diffusion_indices(x_i+1, y_i+1)
+            laplacian[x_i, y_i] = (V[prev_x_i, y_i] + V[next_x_i, y_i] + V[x_i, prev_y_i] + V[x_i, next_y_i] - 4*V[x_i, y_i]) / (dx^2)
+        end
+    end
+
+    return laplacian
+end
+
 function func(var,parameters,t)
     df = zeros(N,N,14)
     for i = 1:N
         for j = 1:N
             var_point = var[i,j,:]
-            df[i,j,:] = ionic_functions(var_point,t)
+            df[i,j,:] = ionic_functions(var_point,t,i,j)
         end
     end
+
+    laplacian(var)
+    df[:,:,1] .= df[:,:,1] .+ (D .* laplacian(var))
 
     return df
 end
@@ -142,7 +182,7 @@ println(df_test[1,1,:])
 
 # Set timespan to solve over
 start_t = 0
-end_t = 2000
+end_t = 500
 h = 10
 num_points = (end_t-start_t)*h + 1
 t_span = (start_t, end_t)
@@ -155,17 +195,21 @@ states = DE.stack(sol.u)
 println("\nShape of states:")
 println(size(states))
 
-voltage = states[1,1,1,:]
-ca_i = states[1,1,2,:]
-ca_SR = states[1,1,3,:]
+# Dimensions: i, j, variable, time
+voltage_trace = states[3,3,1,:]
+ca_i_trace = states[1,1,2,:]
+ca_SR_trace = states[1,1,3,:]
+
+voltage = states[:,:,1,:]
 
 println()
-println(size(voltage))
+println(size(voltage_trace))
 println(size(t_eval))
 
-Plots.plot(t_eval, voltage, show=true)
+Plots.plot(t_eval, voltage_trace, show=true)
 
 #plots(t_eval, states)
 println("Press the enter key to quit:")
 readline()
 
+# Plots.(t_eval, voltage_trace, show=true)

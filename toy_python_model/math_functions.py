@@ -17,6 +17,7 @@ def active_stress(u: np.ndarray, T_a: np.ndarray):
     epsilon_u = np.where(u < 0.05, 10, 1)
     return epsilon_u * ((k_T * u) - T_a)
 
+@njit()
 def determine_diffusion_indices(x,y):
     """Given the x and y indices for a point on the grid, it returns the proper indices
     so as to allow for Neumann boundary conditions. Specifically, any index outside of
@@ -56,17 +57,18 @@ def laplacian_standard (u: np.ndarray):
 
     # boundary conditions already taken care of
 
-    # for x_i in range(0, x_grid_size):
-    #     for y_i in range(0, y_grid_size):
-    #         prev_x_i, prev_y_i = determine_diffusion_indices(x_i-1, y_i-1)
-    #         next_x_i, next_y_i = determine_diffusion_indices(x_i+1, y_i+1)
-    #         laplacian[x_i][y_i] = (u[prev_x_i][y_i] + u[next_x_i][y_i] + u[x_i][prev_y_i] + u[x_i][next_y_i] - 4*u[x_i][y_i]) / (dx**2)
-    
-    for x_i in range(1, x_grid_size-1):
-        for y_i in range(1, y_grid_size-1):
-            prev_x_i, prev_y_i = x_i - 1, y_i - 1
-            next_x_i, next_y_i = x_i + 1, y_i + 1
+
+    for x_i in range(0, x_grid_size):
+        for y_i in range(0, y_grid_size):
+            prev_x_i, prev_y_i = determine_diffusion_indices(x_i-1, y_i-1)
+            next_x_i, next_y_i = determine_diffusion_indices(x_i+1, y_i+1)
             laplacian[x_i][y_i] = (u[prev_x_i][y_i] + u[next_x_i][y_i] + u[x_i][prev_y_i] + u[x_i][next_y_i] - 4*u[x_i][y_i]) / (dx**2)
+    
+    # for x_i in range(1, x_grid_size-1):
+    #     for y_i in range(1, y_grid_size-1):
+    #         prev_x_i, prev_y_i = x_i - 1, y_i - 1
+    #         next_x_i, next_y_i = x_i + 1, y_i + 1
+    #         laplacian[x_i][y_i] = (u[prev_x_i][y_i] + u[next_x_i][y_i] + u[x_i][prev_y_i] + u[x_i][next_y_i] - 4*u[x_i][y_i]) / (dx**2)
 
     return laplacian
 

@@ -67,7 +67,7 @@ def compute(timesteps = default_timesteps, last_disturbance_time = 1500, disturb
 
         F, G = reactions_aliev_panfilov(u_t, v_t)
 
-        u_t = enforce_boundary_conditions(u_t)
+        #u_t = enforce_boundary_conditions(u_t)
         #v_t = enforce_boundary_conditions(v_t) not needed: no diffusion for v.
         diffusion = D * laplacian_method(u_t)
 
