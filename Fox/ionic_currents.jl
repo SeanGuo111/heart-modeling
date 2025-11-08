@@ -1,13 +1,7 @@
 module ionic_currents
 
-export Istim, INa, IK1, IKr, IKs, Ito, IKp, INaK, INaCa, INab, ICab, IpCa, ICa, ICaK, calcium_handling_fox, calcium_handling_omichi
-export N, midp, dx, D
-
-# 2D PARAMETERS
-N = 5
-midp = (N+1)/2
-dx = 0.5
-D = 0.01
+export INa, IK1, IKr, IKs, Ito, IKp, INaK, INaCa, INab, ICab, IpCa, ICa, ICaK, calcium_handling_fox, calcium_handling_omichi
+#export N, midp, dx, D, Cm
 
 # IONIC PARAMETERS
 GNa = 12.8
@@ -68,25 +62,6 @@ kup = 0.25
 beta = 0.02
 v2 = 1.5 * (10^-4)
 vup = 0.1
-
-function Istim(t,var,df,i,j)
-    #NOTE: RECONFIGURE
-
-    if (i == midp && j == midp)
-        if t > 100 && t < 101
-            df[1] += -80
-        elseif t > 500 && t < 501
-            df[1] += -80
-        elseif t > 900 && t < 901
-            df[1] += -80
-        elseif t > 1300 && t < 1301
-            df[1] += -80
-        elseif t > 1700 && t < 1701
-            df[1] += -80
-        end
-    end
-    return df
-end
 
 # VERIFIED
 function INa(t,var,df)
